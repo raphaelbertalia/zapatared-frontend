@@ -1,28 +1,94 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+
+import { fetchComToken } from '../utils/fetchComToken';
+import { API_BASE } from '../utils/api';
 
 export default function Membros() {
+    // ──────────────────── STATE ────────────────────
     const [membros, setMembros] = useState([]);
     const [editandoId, setEditandoId] = useState(null);
-    const [formData, setFormData] = useState({ nome: '', apelido: '', telefone: '', email: '' });
-    const [novaMensalidade, setNovaMensalidade] = useState({ mes: '', valor: '' });
-    const [modalAberto, setModalAberto] = useState(false);
-    const [membroSelecionado, setMembroSelecionado] = useState(null);
-    const [erros, setErros] = useState({});
+    const [formData, setFormData] = useState({
+        nome: '',
+        apelido: '',
+        telefone: '',
+        email: '',
+        status: '',
+        graduacao: 'Camiseta',
+        funcao: '',
+    });
 
+    // rótulos para o <select>
+    const graduacoes = [
+        'CAMISETA',
+        'PROSPERO',
+        'MEIO_ESCUDO',
+        'OFICIAL',
+        'HONRADO',
+        'VETERANO',
+    ];
+
+    // Enum → Label
+    const enumParaLabel = {
+        CAMISETA: 'Camiseta',
+        PROSPERO: 'Próspero',
+        MEIO_ESCUDO: 'Meio Escudo',
+        OFICIAL: 'Oficial',
+        HONRADO: 'Honrado',
+        VETERANO: 'Veterano',
+    };
+
+    // removido modal mensalidade
+    const [erros, setErros] = useState({});
+    const [mensalidadesVisiveis, setMensalidadesVisiveis] = useState({});
+
+    const navigate = useNavigate();
+    const [busca, setBusca] = useState('');
+    const [filtroStatus, setFiltroStatus] = useState('');
+    const [filtroGraduacao, setFiltroGraduacao] = useState('');
+
+    // ──────────────────── EFFECTS ────────────────────
     useEffect(() => {
         buscarMembros();
     }, []);
 
-    function abrirModalMensalidade(membro) {
-        setMembroSelecionado(membro);
-        setNovaMensalidade({ mes: '', valor: '' });
-        setErros({});
-        setModalAberto(true);
-    }
+    const membrosFiltrados = useMemo(() =>
+        membros.filter((m) => {
+            const texto = `${m.nome} ${m.apelido}`.toLowerCase();
+
+            if (busca && !texto.includes(busca.toLowerCase())) return false;
+            if (filtroStatus && m.status !== filtroStatus) return false;
+            if (filtroGraduacao && m.graduacao !== filtroGraduacao) return false;
+
+            return true;
+        }),
+        [membros, busca, filtroStatus, filtroGraduacao]
+    );
+
+    const totais = useMemo(() => {
+        // Inicializa o objeto com contadores
+        const statusContagem = { ativo: 0, inativo: 0, isento: 0, afastado: 0 };
+        const graduacaoContagem = { CAMISETA: 0, PROSPERO: 0, MEIO_ESCUDO: 0, OFICIAL: 0, HONRADO: 0, VETERANO: 0 };
+
+        membrosFiltrados.forEach(membro => {
+            // Conta status
+            if (statusContagem[membro.status] !== undefined) {
+                statusContagem[membro.status]++;
+            }
+            // Conta graduação
+            if (graduacaoContagem[membro.graduacao] !== undefined) {
+                graduacaoContagem[membro.graduacao]++;
+            }
+        });
+
+        return { statusContagem, graduacaoContagem, total: membrosFiltrados.length };
+    }, [membrosFiltrados]);
 
     async function buscarMembros() {
         try {
-            const res = await fetch('http://localhost:3000/membros');
+            const res = await fetchComToken(`${API_BASE}/membros`);
+            if (!res) return;
             const data = await res.json();
             setMembros(data);
         } catch (err) {
@@ -30,53 +96,14 @@ export default function Membros() {
         }
     }
 
-    async function alternarStatusPago(mensalidadeId, novoStatus) {
-        try {
-            await fetch(`http://localhost:3000/mensalidades/${mensalidadeId}/pago`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pago: novoStatus }),
-            });
-            buscarMembros();
-        } catch (err) {
-            console.error('Erro ao atualizar status de pagamento:', err);
-        }
-    }
-
-    async function deletarMembro(id) {
-        const confirmar = window.confirm('Tem certeza que deseja excluir este membro?');
-        if (!confirmar) return;
-
-        try {
-            await fetch(`http://localhost:3000/membros/${id}`, { method: 'DELETE' });
-            buscarMembros();
-        } catch (err) {
-            console.error('Erro ao excluir membro:', err);
-        }
-    }
-
-    function iniciarEdicao(membro) {
-        setEditandoId(membro.id);
-        setFormData({
-            apelido: membro.apelido,
-            nome: membro.nome,
-            telefone: membro.telefone,
-            email: membro.email || '',
-        });
-    }
-
-    function cancelarEdicao() {
-        setEditandoId(null);
-        setFormData({ apelido: '', nome: '', telefone: '', email: '' });
-    }
-
+    // ──────────────────── CRUD MEMBROS ────────────────────
     async function salvarEdicao(id) {
         try {
-            await fetch(`http://localhost:3000/membros/${id}`, {
+            const res = await fetchComToken(`${API_BASE}/membros/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData),
             });
+            if (!res) return;
             setEditandoId(null);
             buscarMembros();
         } catch (err) {
@@ -84,191 +111,319 @@ export default function Membros() {
         }
     }
 
-    function validarMensalidade() {
-        const novoErros = {};
-
-        // Valida mês formato MM/YYYY
-        if (!/^((0[1-9])|(1[0-2]))\/\d{4}$/.test(novaMensalidade.mes)) {
-            novoErros.mes = 'Informe o mês no formato MM/YYYY';
-        }
-
-        // Valor deve ser número positivo
-        const valorNum = parseFloat(novaMensalidade.valor);
-        if (isNaN(valorNum) || valorNum <= 0) {
-            novoErros.valor = 'Informe um valor positivo válido';
-        }
-
-        setErros(novoErros);
-        return Object.keys(novoErros).length === 0;
-    }
-
-    async function cadastrarMensalidade(membroId) {
-        if (!validarMensalidade()) return;
-
+    async function deletarMembro(id) {
+        if (!window.confirm('Tem certeza que deseja excluir este membro?')) return;
         try {
-            await fetch('http://localhost:3000/mensalidades', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...novaMensalidade,
-                    membroId,
-                    valor: parseFloat(novaMensalidade.valor),
-                }),
+            const res = await fetchComToken(`${API_BASE}/membros/${id}`, {
+                method: 'DELETE',
             });
-
-            setNovaMensalidade({ mes: '', valor: '' });
-            setModalAberto(false);
+            if (!res) return;
             buscarMembros();
         } catch (err) {
-            console.error('Erro ao cadastrar mensalidade:', err);
+            console.error('Erro ao excluir membro:', err);
         }
     }
 
-    async function deletarMensalidade(mensalidadeId) {
-        const confirmar = window.confirm('Tem certeza que deseja excluir esta mensalidade?');
-        if (!confirmar) return;
-
+    // ──────────────────── CRUD MENSALIDADE ────────────────────
+    async function alternarStatusPago(mensalidadeId, novoStatus) {
         try {
-            await fetch(`http://localhost:3000/mensalidades/${mensalidadeId}`, { method: 'DELETE' });
-            buscarMembros(); // Atualiza a lista
+            const res = await fetchComToken(`${API_BASE}/mensalidades/${mensalidadeId}/pago`, {
+                method: 'PATCH',
+                body: JSON.stringify({ pago: novoStatus }),
+            });
+            if (!res) return;
+            buscarMembros();
+        } catch (err) {
+            console.error('Erro ao atualizar status de pagamento:', err);
+        }
+    }
+
+    function estaAtrasada(ms) {
+        if (ms.pago) return false;
+        return new Date(ms.vencimento) < new Date();
+    }
+
+    async function deletarMensalidade(id) {
+        if (!window.confirm('Tem certeza que deseja excluir esta mensalidade?')) return;
+        try {
+            const res = await fetchComToken(`${API_BASE}/mensalidades/${id}`, {
+                method: 'DELETE',
+            });
+            if (!res) return;
+            buscarMembros();
         } catch (err) {
             console.error('Erro ao excluir mensalidade:', err);
         }
     }
 
-    function handleChange(e) {
-        const { name, value } = e.target;
+    const toggleMensalidades = (id) => setMensalidadesVisiveis((p) => ({ ...p, [id]: !p[id] }));
 
-        // Se quiser limitar caracteres no mês, pode adicionar aqui
-        setNovaMensalidade(prev => ({ ...prev, [name]: value }));
-    }
-
+    // ──────────────────── RENDER ────────────────────
     return (
-        
-        <div className="p-6 max-w-3xl mx-auto">
-            
-            <h1 className="text-3xl font-bold mb-6 text-center">Zapata Red</h1>
+        <div className="p-6">
+            {/* Header */}
+            <div className="text-center mb-6">
+                <h1 className="font-['Hellprint'] text-3xl font-bold text-[#ec4303]">Zapata Red</h1>
+                <h2 className="font-['Hellprint'] text-2xl text-[#ec4303]">Membros</h2>
+            </div>
 
-            <h2 className="text-3xl font-bold mb-6">Membros e mensalidades</h2>
+            {/* FILTROS */}
+            <div className="mb-4 flex flex-wrap gap-4 items-end justify-center">
+                {/* Busca */}
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold">Buscar</label>
+                    <input
+                        type="text"
+                        value={busca}
+                        onChange={(e) => setBusca(e.target.value)}
+                        placeholder="Nome ou Apelido"
+                        className="border rounded px-3 py-2"
+                    />
+                </div>
 
-            {membros.length === 0 ? (
+                {/* Status */}
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold">Status</label>
+                    <select
+                        value={filtroStatus}
+                        onChange={(e) => setFiltroStatus(e.target.value)}
+                        className="border rounded px-3 py-2"
+                    >
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativo</option>
+                        <option value="inativo">Inativo</option>
+                        <option value="isento">Isento</option>
+                        <option value="afastado">Afastado</option>
+                    </select>
+                </div>
+
+                {/* Graduação */}
+                <div className="flex flex-col">
+                    <label className="text-sm font-semibold">Graduação</label>
+                    <select
+                        value={filtroGraduacao}
+                        onChange={(e) => setFiltroGraduacao(e.target.value)}
+                        className="border rounded px-3 py-2"
+                    >
+                        <option value="">Todas</option>
+                        {Object.keys(enumParaLabel).map((g) => (
+                            <option key={g} value={g}>
+                                {enumParaLabel[g]}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <button
+                    onClick={() => { setBusca(''); setFiltroStatus(''); setFiltroGraduacao(''); }}
+                    className="text-sm text-blue-600 underline mb-4"
+                >
+                    Limpar filtros
+                </button>
+            </div>
+
+            <div className="mb-6 flex justify-end">
+                <button
+                    onClick={() => navigate('/cadastro')}
+                    className="font-['Hellprint'] bg-[#fff200] text-white rounded-padrao shadow-leve px-4 py-2"
+                >
+                    + Cadastrar Membro
+                </button>
+            </div>
+
+            {/* Lista */}
+            {membrosFiltrados.length === 0 ? (
                 <p>Nenhum membro encontrado.</p>
             ) : (
                 <ul className="space-y-4">
-                    {membros.map(membro => (
+                    {membrosFiltrados.map((membro) => (
                         <li key={membro.id} className="p-4 border rounded shadow-sm bg-white">
                             {editandoId === membro.id ? (
                                 <div className="space-y-2">
-                                    <input
-                                        type="text"
-                                        name="apelido"
-                                        value={formData.apelido}
-                                        onChange={e =>
-                                            setFormData(prev => ({ ...prev, apelido: e.target.value }))
+                                    {['apelido', 'nome', 'telefone', 'email', 'funcao'].map((campo) => (
+                                        <input
+                                            key={campo}
+                                            type="text"
+                                            name={campo}
+                                            value={formData[campo]}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({ ...prev, [campo]: e.target.value }))
+                                            }
+                                            placeholder={campo}
+                                            className="w-full border rounded px-3 py-1"
+                                        />
+                                    ))}
+
+                                    <select
+                                        name="graduacao"
+                                        value={formData.graduacao}
+                                        onChange={(e) => setFormData((p) => ({ ...p, graduacao: e.target.value }))}
+                                        className="w-full border rounded px-3 py-2"
+                                    >
+                                        {graduacoes.map((g) => (
+                                            <option key={g} value={g}>
+                                                {enumParaLabel[g]}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <select
+                                        name="status"
+                                        value={formData.status}
+                                        onChange={(e) =>
+                                            setFormData((p) => ({ ...p, status: e.target.value }))
                                         }
-                                        placeholder="Apelido"
-                                        className="w-full border rounded px-3 py-1"
-                                    />
-                                    <input
-                                        type="text"
-                                        name="nome"
-                                        value={formData.nome}
-                                        onChange={e =>
-                                            setFormData(prev => ({ ...prev, nome: e.target.value }))
-                                        }
-                                        placeholder="Nome"
-                                        className="w-full border rounded px-3 py-1"
-                                    />
-                                    <input
-                                        type="text"
-                                        name="telefone"
-                                        value={formData.telefone}
-                                        onChange={e =>
-                                            setFormData(prev => ({ ...prev, telefone: e.target.value }))
-                                        }
-                                        placeholder="Telefone"
-                                        className="w-full border rounded px-3 py-1"
-                                    />
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={e =>
-                                            setFormData(prev => ({ ...prev, email: e.target.value }))
-                                        }
-                                        placeholder="Email"
-                                        className="w-full border rounded px-3 py-1"
-                                    />
+                                        className="w-full border rounded px-3 py-2"
+                                    >
+                                        <option value="ativo">Ativo</option>
+                                        <option value="inativo">Inativo</option>
+                                        <option value="isento">Isento</option>
+                                        <option value="afastado">Afastado</option>
+                                    </select>
+
                                     <div className="flex gap-2 mt-2">
                                         <button
                                             onClick={() => salvarEdicao(membro.id)}
-                                            className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm"
+                                            className="bg-green-600 text-white px-3 py-1 rounded text-sm"
                                         >
                                             Salvar
                                         </button>
                                         <button
-                                            onClick={cancelarEdicao}
-                                            className="bg-gray-300 text-black px-3 py-1 rounded hover:bg-gray-400 text-sm"
+                                            onClick={() => {
+                                                setEditandoId(null);
+                                                setFormData({
+                                                    apelido: membro.apelido,
+                                                    nome: membro.nome,
+                                                    telefone: membro.telefone,
+                                                    email: membro.email || '',
+                                                    status: membro.status,
+                                                    graduacao: membro.graduacao || 'CAMISETA',
+                                                    funcao: membro.funcao || '',
+                                                });
+                                            }}
+                                            className="bg-gray-300 px-3 py-1 rounded text-sm"
                                         >
                                             Cancelar
                                         </button>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex justify-between items-start">
+                                <div className="flex justify-between items-start text-left">
                                     <div>
                                         <strong className="text-xl">{membro.apelido}</strong>
                                         <br />
-                                        Nome: <strong className="text-xl">{membro.nome}</strong>
+                                        Status: <strong>{membro.status}</strong>
+                                        <br />
+                                        Nome: <strong>{membro.nome}</strong>
+                                        <br />
+                                        CPF: <strong>{membro.cpf || 'Não informado'}</strong>
                                         <br />
                                         Telefone: {membro.telefone}
                                         <br />
                                         Email: {membro.email || 'Não informado'}
+                                        <br />
+                                        Graduação: {enumParaLabel[membro.graduacao] || membro.graduacao}
+                                        <br />
+                                        Função: {membro.funcao || 'Não definida'}
 
-                                        {membro.mensalidades?.length > 0 && (
-                                            <ul className="mt-2 list-disc text-gray-700 pl-4">
-                                                {membro.mensalidades.map(m => (
-                                                    <li key={m.id} className="flex items-center gap-2">
-                                                        <span>
-                                                            {m.mes} — R$ {m.valor.toFixed(2)} — {m.pago ? '✅ Pago' : '❌ Pendente'}
-                                                        </span>
-                                                        <button
-                                                            onClick={() => alternarStatusPago(m.id, !m.pago)}
-                                                            className={`text-xs px-2 py-1 rounded ${m.pago ? 'bg-yellow-500 text-white' : 'bg-green-600 text-white'
-                                                                }`}
-                                                        >
-                                                            {m.pago ? 'Desmarcar' : 'Marcar como Pago'}
-                                                        </button>
-                                                        <button
-                                                            onClick={() => deletarMensalidade(m.id)}
-                                                            className="text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700"
-                                                        >
-                                                            Excluir
-                                                        </button>
-                                                    </li>
-                                                ))}
-                                            </ul>
+                                        {mensalidadesVisiveis[membro.id] && (
+                                            membro.mensalidades?.length > 0 ? (
+                                                <div className="mt-2 text-gray-700">
+                                                    <ul className="list-disc pl-4">
+                                                        {membro.mensalidades.map((ms) => (
+                                                            <li key={ms.id} className="flex items-center gap-2">
+                                                                <span>
+                                                                    {ms.mes} — R$ {(parseFloat(ms.valor) || 0).toFixed(2)} — {ms.pago ? '✅ Pago' : '❌ Pendente'}
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => alternarStatusPago(ms.id, !ms.pago)}
+                                                                    className={`text-xs px-2 py-1 rounded ${ms.pago ? 'bg-yellow-500' : 'bg-green-600 text-white'}`}
+                                                                >
+                                                                    {ms.pago ? 'Desmarcar' : 'Marcar como Pago'}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => deletarMensalidade(ms.id)}
+                                                                    className="text-xs px-2 py-1 rounded bg-red-600 text-white"
+                                                                >
+                                                                    Excluir
+                                                                </button>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+
+                                                    {/* BOTÃO WHATSAPP – aparece só se houver atrasadas */}
+                                                    {membro.mensalidades.some((ms) => !ms.pago && new Date(ms.vencimento) < new Date()) && (
+                                                        <div className="mt-3">
+                                                            <button
+                                                                className="bg-green-600 text-white px-3 py-1 rounded text-sm"
+                                                                onClick={() => {
+                                                                    const atrasadas = membro.mensalidades.filter(ms => !ms.pago && new Date(ms.vencimento) < new Date());
+                                                                    const numero = membro.telefone.replace(/\D/g, '');
+
+                                                                    const lista = atrasadas
+                                                                        .map(ms => `${ms.mes} - R$ ${(Number(ms.valor) || 0).toFixed(2)}`)
+                                                                        .join('\n');
+
+                                                                    const msg = `{Mensagem Automatica}
+VIVA!, ${membro.apelido},
+
+Identificamos as seguintes mensalidades em atraso:
+${lista}
+
+Por favor, entre em contato para regularizar.`;
+
+                                                                    const url = `https://wa.me/55${numero}?text=${encodeURIComponent(msg)}`;
+
+                                                                    console.log('Abrindo link:', url);
+                                                                    window.open(url, '_blank');
+                                                                }}
+                                                            >
+                                                                Cobrar WhatsApp
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <p className="mt-2 text-gray-600 italic">Membro sem mensalidade.</p>
+                                            )
                                         )}
                                     </div>
 
+                                    {/* AÇÕES */}
                                     <div className="flex flex-col gap-2">
                                         <button
-                                            onClick={() => iniciarEdicao(membro)}
-                                            className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 text-sm"
+                                            onClick={() => {
+                                                setEditandoId(membro.id);
+                                                setFormData({
+                                                    apelido: membro.apelido,
+                                                    nome: membro.nome,
+                                                    telefone: membro.telefone,
+                                                    email: membro.email || '',
+                                                    status: membro.status,
+                                                    graduacao: membro.graduacao || 'CAMISETA',
+                                                    funcao: membro.funcao || '',
+                                                });
+                                            }}
+                                            className="bg-yellow-500 text-white px-3 py-1 rounded text-sm"
                                         >
                                             Editar
                                         </button>
                                         <button
                                             onClick={() => deletarMembro(membro.id)}
-                                            className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 text-sm"
+                                            className="bg-red-600 text-white px-3 py-1 rounded text-sm"
                                         >
                                             Excluir
                                         </button>
                                         <button
-                                            onClick={() => abrirModalMensalidade(membro)}
-                                            className="mt-2 bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-sm"
+                                            onClick={() => navigate(`/mensalidade/${membro.id}`)}
+                                            className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
                                         >
                                             + Mensalidade
+                                        </button>
+                                        <button
+                                            onClick={() => toggleMensalidades(membro.id)}
+                                            className="text-sm text-blue-600 underline"
+                                        >
+                                            {mensalidadesVisiveis[membro.id] ? 'Ocultar mensalidades' : 'Ver mensalidades'}
                                         </button>
                                     </div>
                                 </div>
@@ -278,55 +433,28 @@ export default function Membros() {
                 </ul>
             )}
 
-            {modalAberto && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-                        <h2 className="text-xl font-bold mb-4">
-                            Nova mensalidade para {membroSelecionado?.apelido}
-                        </h2>
-
-                        <input
-                            type="text"
-                            name="mes"
-                            placeholder="Mês (MM/YYYY)"
-                            value={novaMensalidade.mes}
-                            onChange={handleChange}
-                            className={`w-full border px-3 py-2 mb-1 rounded ${erros.mes ? 'border-red-500' : ''
-                                }`}
-                        />
-                        {erros.mes && <p className="text-red-600 text-sm mb-2">{erros.mes}</p>}
-
-                        <input
-                            type="number"
-                            step="0.01"
-                            name="valor"
-                            placeholder="Valor"
-                            value={novaMensalidade.valor}
-                            onChange={handleChange}
-                            className={`w-full border px-3 py-2 mb-1 rounded ${erros.valor ? 'border-red-500' : ''
-                                }`}
-                        />
-                        {erros.valor && <p className="text-red-600 text-sm mb-2">{erros.valor}</p>}
-
-                        <div className="flex justify-end gap-2">
-                            <button
-                                onClick={() => setModalAberto(false)}
-                                className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 text-sm"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    await cadastrarMensalidade(membroSelecionado.id);
-                                }}
-                                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm"
-                            >
-                                Salvar
-                            </button>
-                        </div>
-                    </div>
+            {/* Estatísticas */}
+            <div className="mt-6 p-4 bg-gray-100 rounded shadow text-left text-gray-700"><div>
+                <strong>Total de membros:</strong> {totais.total}
+            </div>
+                <br />
+                <div>
+                    <strong>Status:</strong> &nbsp;
+                    Ativo: {totais.statusContagem.ativo} |
+                    Inativo: {totais.statusContagem.inativo} |
+                    Isento: {totais.statusContagem.isento} |
+                    Afastado: {totais.statusContagem.afastado}
                 </div>
-            )}
-        </div>
+                <br />
+                <div>
+                    <strong>Graduação:</strong> &nbsp;
+                    Camiseta: {totais.graduacaoContagem.CAMISETA} |
+                    Próspero: {totais.graduacaoContagem.PROSPERO} |
+                    Meio Escudo: {totais.graduacaoContagem.MEIO_ESCUDO} |
+                    Oficial: {totais.graduacaoContagem.OFICIAL} |
+                    Honrado: {totais.graduacaoContagem.HONRADO} |
+                    Veterano: {totais.graduacaoContagem.VETERANO}
+                </div>
+            </div></div>
     );
 }

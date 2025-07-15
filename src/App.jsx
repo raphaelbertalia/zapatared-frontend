@@ -1,39 +1,104 @@
-import { useState } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from 'react-router-dom';
+import { useState, useEffect } from 'react';
+
 import Membros from './pages/Membros';
+import Mensalidades from './pages/Mensalidades';
 import CadastroMembro from './pages/CadastroMembro';
+import Login from './pages/Login';
+import Navbar from './components/Navbar';
+import CadastroMensalidade from './pages/CadastroMensalidade';
 
-function App() {
-  const [tela, setTela] = useState('lista');
-
-  return (
-  <div className="min-h-screen bg-gray-100 p-4">
-    <div className="flex justify-center mb-4">
-      <img
-        src="/logo.png"
-        alt="Logo da Subsede"
-        className="h-40 w-auto object-contain"
-      />
-    </div>
-
-    <nav className="max-w-3xl mx-auto mb-6 flex justify-center gap-4">
-      <button
-        onClick={() => setTela('lista')}
-        className={`px-4 py-2 rounded ${tela === 'lista' ? 'bg-blue-600 text-white' : 'bg-white'}`}
-      >
-        Lista de Membros
-      </button>
-      <button
-        onClick={() => setTela('cadastro')}
-        className={`px-4 py-2 rounded ${tela === 'cadastro' ? 'bg-blue-600 text-white' : 'bg-white'}`}
-      >
-        Cadastrar Membro
-      </button>
-    </nav>
-
-    {tela === 'lista' && <Membros />}
-    {tela === 'cadastro' && <CadastroMembro />}
-  </div>
-);
+function RotaPrivada({ children }) {
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/login" />;
 }
 
-export default App;
+function AppContent() {
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const location = useLocation();
+  const estaNaTelaDeLogin = location.pathname === '/login';
+
+  useEffect(() => {
+    const sync = () => setToken(localStorage.getItem('token'));
+    window.addEventListener('storage', sync);
+    return () => window.removeEventListener('storage', sync);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* CABEÇALHO COM LOGO E NAVBAR */}
+      <header className="flex flex-col items-center p-4">
+        <div className="flex justify-center mb-6">
+          <img
+            src="/logo.png"
+            alt="Logo da Subsede"
+            className="block w-[14rem] h-auto object-contain"
+          />
+        </div>
+
+        {token && !estaNaTelaDeLogin && (
+          <div className="flex justify-center gap-4 mb-6">
+            <Navbar />
+          </div>
+        )}
+      </header>
+
+      {/* CONTEÚDO DAS PÁGINAS (SEM CENTRALIZAR) */}
+      <main className="px-4 pb-10">
+        <Routes>
+          <Route path="/login" element={<Login setToken={setToken} />} />
+          <Route
+            path="/mensalidades"
+            element={
+              <RotaPrivada>
+                <Mensalidades />
+              </RotaPrivada>
+            }
+          />
+          <Route
+            path="/membros"
+            element={
+              <RotaPrivada>
+                <Membros />
+              </RotaPrivada>
+            }
+          />
+          <Route
+            path="/cadastro"
+            element={
+              <RotaPrivada>
+                <CadastroMembro />
+              </RotaPrivada>
+            }
+          />
+          <Route
+            path="/mensalidade/:membroId"
+            element={
+              <RotaPrivada>
+                <CadastroMensalidade />
+              </RotaPrivada>
+            }
+          />
+          <Route
+            path="*"
+            element={<Navigate to={token ? '/membros' : '/login'} />}
+          />
+        </Routes>
+      </main>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  );
+}
