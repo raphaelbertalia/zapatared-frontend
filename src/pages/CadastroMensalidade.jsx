@@ -72,6 +72,18 @@ export default function CadastroMensalidade() {
         return;
       }
 
+      if (res.status === 409) {
+        const data = await res.json();
+        alert(data.erro || 'Parcela já cadastrada para este mês e membro.');
+        return;
+      }
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.erro || 'Erro ao salvar mensalidade');
+        return;
+      }
+
       alert('Mensalidade cadastrada com sucesso!');
       setMensalidade({ mes: '', valor: '' });
 

@@ -21,6 +21,7 @@ export default function Login({ setToken }) {
       if (!res.ok) throw new Error(data.erro || 'Erro ao fazer login');
 
       localStorage.setItem('token', data.token);
+      localStorage.setItem('nome', data.nome);
       setToken(data.token);
       navigate('/membros');
     } catch (err) {

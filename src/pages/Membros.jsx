@@ -220,8 +220,9 @@ export default function Membros() {
                     Limpar filtros
                 </button>
             </div>
+            <br />
 
-            <div className="mb-6 flex justify-end">
+            <div className="mb-6 flex justify-center">
                 <button
                     onClick={() => navigate('/cadastro')}
                     className="font-['Hellprint'] bg-[#fff200] text-white rounded-padrao shadow-leve px-4 py-2"
@@ -434,9 +435,10 @@ Por favor, entre em contato para regularizar.`;
             )}
 
             {/* Estatísticas */}
-            <div className="mt-6 p-4 bg-gray-100 rounded shadow text-left text-gray-700"><div>
-                <strong>Total de membros:</strong> {totais.total}
-            </div>
+            <div className="mt-6 p-4 bg-gray-100 rounded shadow text-center text-gray-700 max-w-lg mx-auto">
+                <div>
+                    <strong>Total de membros:</strong> {totais.total}
+                </div>
                 <br />
                 <div>
                     <strong>Status:</strong> &nbsp;

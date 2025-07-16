@@ -63,6 +63,14 @@ export default function Mensalidades() {
     return passaNome && passaStatus;
   });
 
+  // Calculando totalizadores
+  const totalGeral = mensalidadesFiltradas.length;
+  const totalPagas = mensalidadesFiltradas.filter(m => m.pago).length;
+  const totalPendentes = mensalidadesFiltradas.filter(m => !m.pago).length;
+  const totalAtrasadas = mensalidadesFiltradas.filter(m => {
+    return !m.pago && new Date(m.vencimento) < new Date();
+  }).length;
+
   const agrupadoPorMembro = mensalidadesFiltradas.reduce((acc, m) => {
     const apelido = m.membro?.apelido || m.membro?.nome || 'Membro desconhecido';
     if (!acc[apelido]) acc[apelido] = [];
@@ -165,6 +173,41 @@ Por favor, entre em contato para regularizar.`;
           </div>
         );
       })}
+      <div className="max-w-4xl mx-auto">
+        <h2 className="text-2xl font-bold mb-4 text-center">Mensalidades</h2>
+
+        {/* Totalizadores com cores */}
+        <div className="mb-6 flex justify-center gap-8 font-semibold text-center text-gray-700">
+          <div
+            className="rounded-lg shadow-sm px-6 py-3 min-w-[100px] border"
+            style={{ backgroundColor: '#fde68a', borderColor: '#fcd34d', color: '#b45309' }} // amarelo claro
+          >
+            Total<br />
+            <span className="text-2xl">{totalGeral}</span>
+          </div>
+          <div
+            className="rounded-lg shadow-sm px-6 py-3 min-w-[100px] border"
+            style={{ backgroundColor: '#bbf7d0', borderColor: '#4ade80', color: '#166534' }} // verde claro
+          >
+            Pagas<br />
+            <span className="text-2xl">{totalPagas}</span>
+          </div>
+          <div
+            className="rounded-lg shadow-sm px-6 py-3 min-w-[100px] border"
+            style={{ backgroundColor: '#fef9c3', borderColor: '#fde047', color: '#92400e' }} // amarelo médio
+          >
+            Pendentes<br />
+            <span className="text-2xl">{totalPendentes}</span>
+          </div>
+          <div
+            className="rounded-lg shadow-sm px-6 py-3 min-w-[100px] border"
+            style={{ backgroundColor: '#fecaca', borderColor: '#f87171', color: '#7f1d1d' }} // vermelho claro
+          >
+            Atrasadas<br />
+            <span className="text-2xl">{totalAtrasadas}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
