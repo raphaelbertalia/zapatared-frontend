@@ -18,7 +18,7 @@ export default function NovoProduto() {
     const [erro, setErro] = useState('');
     const [produtosCadastrados, setProdutosCadastrados] = useState([]);
 
-    const tamanhosCamiseta = ['P', 'M', 'G', 'GG', 'EXG', 'G1', 'G2'];
+    const tamanhosCamiseta = ['P', 'M', 'G', 'GG', 'EXG', 'G1', 'G2', 'G3', 'G4', 'G5'];
     const tipoBone = 'único';
 
     function handleChange(e) {
