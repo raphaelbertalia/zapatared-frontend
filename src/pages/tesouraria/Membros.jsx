@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
 
-import { fetchComToken } from '../utils/fetchComToken';
-import { API_BASE } from '../utils/api';
+import { fetchComToken } from '../../utils/fetchComToken';
+import { API_BASE } from '../../utils/api';
 
 export default function Membros() {
     // ──────────────────── STATE ────────────────────
@@ -163,7 +163,6 @@ export default function Membros() {
         <div className="p-6">
             {/* Header */}
             <div className="text-center mb-6">
-                <h1 className="font-['Hellprint'] text-3xl font-bold text-[#ec4303]">Zapata Red</h1>
                 <h2 className="font-['Hellprint'] text-2xl text-[#ec4303]">Membros</h2>
             </div>
 

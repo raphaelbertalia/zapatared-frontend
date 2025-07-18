@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchComToken } from '../utils/fetchComToken';
-import { API_BASE } from '../utils/api';
+import { fetchComToken } from '../../utils/fetchComToken';
+import { API_BASE } from '../../utils/api';
 
 export default function Mensalidades() {
   const [mensalidades, setMensalidades] = useState([]);

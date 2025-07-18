@@ -23,7 +23,7 @@ export default function Login({ setToken }) {
       localStorage.setItem('token', data.token);
       localStorage.setItem('nome', data.nome);
       setToken(data.token);
-      navigate('/membros');
+      navigate('/modulo');
     } catch (err) {
       setErro(err.message);
     }

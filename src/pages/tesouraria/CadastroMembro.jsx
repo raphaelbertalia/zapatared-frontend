@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { IMaskInput } from 'react-imask';
 import { useNavigate } from 'react-router-dom';
 
-import { fetchComToken } from '../utils/fetchComToken';
-import { API_BASE } from '../utils/api';
+import { fetchComToken } from '../../utils/fetchComToken';
+import { API_BASE } from '../../utils/api';
 
 export default function CadastroMembro() {
   const [nome, setNome] = useState('');
