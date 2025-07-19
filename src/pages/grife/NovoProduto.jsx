@@ -9,11 +9,10 @@ export default function NovoProduto() {
     const [form, setForm] = useState({
         nome: '',
         tipo: 'CAMISETA_MANGA_CURTA',
+        valorVenda: '', // valor único para o produto
     });
 
-    const [variantes, setVariantes] = useState([
-        { tamanho: '', custo: '', valorVenda: '' },
-    ]);
+    const [variantes, setVariantes] = useState([{ tamanho: '' }]);
 
     const [erro, setErro] = useState('');
     const [produtosCadastrados, setProdutosCadastrados] = useState([]);
@@ -23,7 +22,7 @@ export default function NovoProduto() {
 
     function handleChange(e) {
         const { name, value } = e.target;
-        setForm({ ...form, [name]: value });
+        setForm(prev => ({ ...prev, [name]: value }));
     }
 
     function atualizarVariante(i, campo, valor) {
@@ -33,7 +32,7 @@ export default function NovoProduto() {
     }
 
     function adicionarVariante() {
-        setVariantes([...variantes, { tamanho: '', custo: '', valorVenda: '' }]);
+        setVariantes([...variantes, { tamanho: '' }]);
     }
 
     function removerVariante(i) {
@@ -42,7 +41,6 @@ export default function NovoProduto() {
         setVariantes(novas);
     }
 
-    // Aqui faz o fetch dos produtos cadastrados para mostrar na lista
     useEffect(() => {
         async function carregarProdutosCadastrados() {
             try {
@@ -64,21 +62,25 @@ export default function NovoProduto() {
         e.preventDefault();
         setErro('');
 
-        if (!form.nome || !form.tipo) {
-            setErro('Preencha todos os campos obrigatórios.');
+        if (!form.nome || !form.tipo || !form.valorVenda) {
+            setErro('Preencha todos os campos obrigatórios, incluindo o valor de venda.');
             return;
         }
 
         const isCamiseta = form.tipo.startsWith('CAMISETA');
 
         if (isCamiseta) {
-            if (variantes.some(v => !v.tamanho || !v.custo || !v.valorVenda)) {
-                setErro('Preencha todos os campos das variações.');
+            if (variantes.some(v => !v.tamanho)) {
+                setErro('Preencha todos os tamanhos das variações.');
                 return;
             }
         } else {
-            if (!variantes[0].custo || !variantes[0].valorVenda) {
-                setErro('Preencha os valores de custo e venda do boné.');
+            if (variantes.length > 0) {
+                setErro('Boné não deve ter variantes.');
+                return;
+            }
+            if (!form.valorVenda || parseFloat(form.valorVenda) <= 0) {
+                setErro('Informe um valor de venda válido para o boné.');
                 return;
             }
         }
@@ -86,22 +88,20 @@ export default function NovoProduto() {
         try {
             const payload = isCamiseta
                 ? {
-                      nome: form.nome,
-                      tipo: form.tipo,
-                      variantes: variantes.map(v => ({
-                          tamanho: v.tamanho,
-                          subtipo: v.subtipo,
-                          precoFornecedor: Number.isFinite(parseFloat(v.custo)) ? parseFloat(v.custo) : 0,
-                          precoVenda: parseFloat(v.valorVenda),
-                      })),
-                  }
+                    nome: form.nome,
+                    tipo: form.tipo,
+                    valorVenda: parseFloat(form.valorVenda),
+                    variantes: variantes.map(v => ({
+                        tamanho: v.tamanho,
+                        // sem precoVenda nem precoFornecedor
+                    })),
+                }
                 : {
-                      nome: form.nome,
-                      tipo: form.tipo,
-                      tamanho: tipoBone,
-                      custo: parseFloat(variantes[0].custo),
-                      valorVenda: parseFloat(variantes[0].valorVenda),
-                  };
+                    nome: form.nome,
+                    tipo: form.tipo,
+                    valorVenda: parseFloat(form.valorVenda),
+                    // boné não tem variantes
+                };
 
             const res = await fetchComToken(`${API_BASE}/produtos`, {
                 method: 'POST',
@@ -143,12 +143,12 @@ export default function NovoProduto() {
                     <select
                         name="tipo"
                         value={form.tipo}
-                        onChange={(e) => {
+                        onChange={e => {
                             handleChange(e);
                             if (e.target.value === 'BONE') {
-                                setVariantes([{ tamanho: tipoBone, custo: '', valorVenda: '' }]);
+                                setVariantes([]); // boné não tem variantes
                             } else {
-                                setVariantes([{ tamanho: '', custo: '', valorVenda: '' }]);
+                                setVariantes([{ tamanho: '' }]);
                             }
                         }}
                         className="w-full p-2 border rounded"
@@ -160,78 +160,61 @@ export default function NovoProduto() {
                     </select>
                 </div>
 
+                <div>
+                    <label className="block font-semibold">Valor de Venda (R$)</label>
+                    <input
+                        name="valorVenda"
+                        type="number"
+                        step="0.01"
+                        value={form.valorVenda}
+                        onChange={handleChange}
+                        className="w-full p-2 border rounded"
+                        required
+                    />
+                </div>
+
                 {isCamiseta && (
-                    <>
-                        <label className="block font-semibold">Variações</label>
-                        {variantes.map((v, i) => (
-                            <div key={i} className="grid grid-cols-4 gap-2 items-center mb-2">
-                                <select
-                                    value={v.tamanho}
-                                    onChange={e => atualizarVariante(i, 'tamanho', e.target.value)}
-                                    className="p-2 border rounded"
+                    <div className="w-full flex justify-center">
+                        <div className="flex flex-col items-center w-full max-w-md">
+                            <label className="block font-semibold mb-2">Variações</label>
+
+                            {variantes.map((v, i) => (
+                                <div
+                                    key={i}
+                                    className="grid grid-cols-[1fr_auto] gap-2 items-center mb-2 w-full"
                                 >
-                                    <option value="">Tamanho</option>
-                                    {tamanhosCamiseta.map(t => (
-                                        <option key={t} value={t}>
-                                            {t}
-                                        </option>
-                                    ))}
-                                </select>
+                                    <select
+                                        value={v.tamanho}
+                                        onChange={e => atualizarVariante(i, 'tamanho', e.target.value)}
+                                        className="p-2 border rounded w-full"
+                                    >
+                                        <option value="">Tamanho</option>
+                                        {tamanhosCamiseta.map(t => (
+                                            <option key={t} value={t}>
+                                                {t}
+                                            </option>
+                                        ))}
+                                    </select>
 
-                                <input
-                                    type="number"
-                                    placeholder="Custo"
-                                    value={v.custo}
-                                    onChange={e => atualizarVariante(i, 'custo', e.target.value)}
-                                    className="p-2 border rounded"
-                                />
-                                <input
-                                    type="number"
-                                    placeholder="Venda"
-                                    value={v.valorVenda}
-                                    onChange={e => atualizarVariante(i, 'valorVenda', e.target.value)}
-                                    className="p-2 border rounded"
-                                />
+                                    {variantes.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => removerVariante(i)}
+                                            className="text-red-600"
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
 
-                                {variantes.length > 1 && (
-                                    <button type="button" onClick={() => removerVariante(i)} className="text-red-600 ml-2">
-                                        ✕
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-
-                        <button type="button" onClick={adicionarVariante} className="text-sm text-blue-600">
-                            + Adicionar variação
-                        </button>
-                    </>
-                )}
-
-                {form.tipo === 'BONE' && (
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block font-semibold">Custo (R$)</label>
-                            <input
-                                name="custo"
-                                type="number"
-                                step="0.01"
-                                value={variantes[0].custo}
-                                onChange={e => atualizarVariante(0, 'custo', e.target.value)}
-                                className="w-full p-2 border rounded"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block font-semibold">Valor de Venda (R$)</label>
-                            <input
-                                name="valorVenda"
-                                type="number"
-                                step="0.01"
-                                value={variantes[0].valorVenda}
-                                onChange={e => atualizarVariante(0, 'valorVenda', e.target.value)}
-                                className="w-full p-2 border rounded"
-                                required
-                            />
+                            <button
+                                type="button"
+                                onClick={adicionarVariante}
+                                className="text-sm text-blue-600 mt-2"
+                            >
+                                + Adicionar variação
+                            </button>
                         </div>
                     </div>
                 )}
@@ -253,12 +236,11 @@ export default function NovoProduto() {
                 </div>
             </form>
 
-            {/* Aqui mostramos os produtos cadastrados */}
             <div className="mt-10">
                 <h3 className="text-lg font-semibold mb-3 text-[#ec4303]">Produtos Cadastrados</h3>
                 {produtosCadastrados.length > 0 ? (
                     <ul className="list-disc list-inside max-h-48 overflow-auto border p-3 rounded bg-gray-50">
-                        {produtosCadastrados.map((p) => (
+                        {produtosCadastrados.map(p => (
                             <li key={p.id} className="text-gray-700">
                                 {p.nome}
                             </li>

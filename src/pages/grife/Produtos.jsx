@@ -42,22 +42,18 @@ export default function Produtos() {
             <div className="grid gap-4">
                 {produtos.length > 0 ? (
                     produtos.map((produto) => {
-                        // Preparar variantes para exibir na tabela
                         let variantesParaTabela = [];
 
                         if (produto.tipo === 'BONE') {
-                            // Boné: só uma linha com os dados principais
                             variantesParaTabela = [
                                 {
-                                    id: 'unique-bone',
-                                    tamanho: produto.tamanho || '-',
-                                    subtipo: tipoDisplay[produto.tipo] || produto.tipo,
-                                    precoFornecedor: produto.custo ?? 0,
+                                    id: 'bone-' + produto.id,
+                                    tamanho: '-',
+                                    subtipo: tipoDisplay[produto.tipo],
                                     precoVenda: produto.valorVenda ?? 0,
                                 },
                             ];
                         } else {
-                            // Camisetas: variantes vindas do backend
                             variantesParaTabela = produto.variantes ?? [];
                         }
 
@@ -79,19 +75,19 @@ export default function Produtos() {
                                                 <tr>
                                                     <th className="border px-3 py-1 text-left bg-gray-100">Tamanho</th>
                                                     <th className="border px-3 py-1 text-left bg-gray-100">Tipo</th>
-                                                    <th className="border px-3 py-1 text-right bg-gray-100">Custo (R$)</th>
                                                     <th className="border px-3 py-1 text-right bg-gray-100">Venda (R$)</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {variantesParaTabela.map((v) => (
                                                     <tr key={v.id}>
-                                                        <td className="border px-3 py-1">{v.tamanho}</td>
+                                                        <td className="border px-3 py-1">{v.tamanho || '-'}</td>
                                                         <td className="border px-3 py-1">
                                                             {v.subtipo || tipoDisplay[produto.tipo] || '-'}
                                                         </td>
-                                                        <td className="border px-3 py-1 text-right">{Number(v.precoFornecedor).toFixed(2)}</td>
-                                                        <td className="border px-3 py-1 text-right">{Number(v.precoVenda).toFixed(2)}</td>
+                                                        <td className="border px-3 py-1 text-right">
+                                                            {Number(v.precoVenda ?? produto.valorVenda ?? 0).toFixed(2)}
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>

@@ -11,6 +11,7 @@ import Membros from './pages/tesouraria/Membros'; // ajuste para seu caminho rea
 import Mensalidades from './pages/tesouraria/Mensalidades'; // ajuste para seu caminho real
 import Produtos from './pages/grife/Produtos'; // você pode criar esse como o primeiro
 import NovoProduto from './pages/grife/NovoProduto';
+import RegistroCompras from './pages/grife/RegistroCompras';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -31,6 +32,7 @@ function App() {
         <Route path="/grife" element={<LayoutGrife />}>
           <Route path="produtos" element={<Produtos />} />
           <Route path="novo-produto" element={<NovoProduto />} />
+          <Route path="compras" element={<RegistroCompras />} />
           {/* Você pode adicionar encomendas depois */}
         </Route>
       </Routes>
