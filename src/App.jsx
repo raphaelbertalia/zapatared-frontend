@@ -14,6 +14,7 @@ import NovoProduto from './pages/grife/NovoProduto';
 import RegistroCompras from './pages/grife/RegistroCompras';
 
 function App() {
+  console.log("Frontend atualizado em 19/07/2025");
   const [token, setToken] = useState(localStorage.getItem('token') || '');
 
   return (
