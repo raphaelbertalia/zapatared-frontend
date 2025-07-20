@@ -5,21 +5,23 @@ export default function LayoutTesouraria() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center p-6">
-      {/* Logo Motoclube */}
-      <header className="mb-4 w-full max-w-md flex items-center justify-between">
-        <img
-          src="/logo-motoclube.png" // ajuste para o caminho real da logo
-          alt="Logo Motoclube"
-          className="h-12"
-        />
-        {/* Botão para mudar para módulo Grife */}
+            {/* Logo Motoclube */}
+            <header className="mb-4 w-full max-w-md text-center">
+                <img
+                    src="/logo.png"
+                    alt="Logo Motoclube"
+                    style={{ height: '200px', width: 'auto', display: 'inline-block' }}
+                />
+            </header>
+            <br />
+
+      {/* Botão para mudar para módulo Grife */}
         <button
           onClick={() => navigate('/grife')}
           className="bg-[#ec4303] text-white font-semibold rounded-md px-4 py-2 shadow-md hover:bg-[#d93b00]"
         >
           Ir para Grife
         </button>
-      </header>
 
       {/* Título módulo */}
       <div className="mb-8 text-center w-full max-w-md">
